@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tcr burnoff calc</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      max-width: 600px;
+    }
+    input[type="number"] {
+      width: 100px;
+      padding: 5px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 5px 10px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tcr burnoff calc</h1>
+  <p>
+    Enter your cold resistance (in ohms) below. This calculator assumes that at 600°F your device’s resistance will be 0.79 Ω as required for burnoffs.
+  </p>
+  <label for="coldRes">Cold Resistance (Ω): </label>
+  <input type="number" id="coldRes" step="any">
+  <button onclick="calculateTCR()">Calculate</button>
+  
+  <h2>Result</h2>
+  <p id="result"></p>
+  
+  <script>
+    function calculateTCR(){
+      var coldRes = parseFloat(document.getElementById('coldRes').value);
+      if(isNaN(coldRes) || coldRes <= 0){
+        document.getElementById('result').innerText = "Please enter a valid positive number for cold resistance.";
+        return;
+      }
+      var tcrFraction = (0.79 / coldRes - 1) / 600;
+      var tcrFull = Math.round(tcrFraction * 200000) - 3;
+      
+      document.getElementById('result').innerText = "Required TCR (full number): " + tcrFull;
+    }
+  </script>
+</body>
+</html>
