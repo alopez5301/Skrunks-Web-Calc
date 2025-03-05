@@ -131,6 +131,7 @@
       background-color: #121212;
       color: #e0e0e0;
     }
+    body.dark-mode .warning
     body.dark-mode h2, 
     body.dark-mode h3 {
       color: #66b2ff;
@@ -254,7 +255,9 @@
       <label for="coldRes">Cold Resistance (Ω): </label>
       <input type="number" id="coldRes" step="any">
       <button id="tcrCalcButton">Calculate</button>
-      
+      <p class="warning">
+    <strong>Warning:</strong> This tool performs standardized math for the temperature coefficient of resistance and then subtracts 3. While this should be accurate for all devices, it may not be accurate for yours. As such, Skrunk is not responsible for any damaged cups or mods that may occur due to the use of this calculator.
+      </p>
       <h3>Result</h3>
       <p id="tcrResult"></p>
       
