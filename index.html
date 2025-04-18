@@ -315,7 +315,7 @@
     const temperatureSets = {
       '7pt': [70, 200, 300, 400, 500, 570, 800],
       '8pt': [-40, 70, 200, 300, 400, 500, 570, 800],
-      'tsm': [-40, 70, 200, 300, 400, 500, 570, 800],
+      'tsm': [-40, 70, 200, 220, 300, 500, 570, 800],
       'auto': [70, 200, 300, 400, 500, 600, 800]
     };
     
@@ -344,7 +344,8 @@
         const row = document.createElement('tr');
         const tempCell = document.createElement('td');
         if (currentType === 'tsm') {
-          if (temp === -40 || temp === 70 || temp === 200) {
+          // Make -40°F, 70°F, 200°F, and 220°F static in TSM mode
+          if (temp === -40 || temp === 70 || temp === 200 || temp === 220) {
             tempCell.innerText = temp;
           } else {
             const inp = document.createElement('input');
