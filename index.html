@@ -315,7 +315,7 @@
     const temperatureSets = {
       '7pt': [70, 200, 300, 400, 500, 570, 800],
       '8pt': [-40, 70, 200, 300, 400, 500, 570, 800],
-      'tsm': [70, 200, 220, 300, 500, 570, 800],
+      'tsm': [-40, 70, 200, 300, 400, 500, 570, 800],
       'auto': [70, 200, 300, 400, 500, 600, 800]
     };
     
@@ -344,7 +344,7 @@
         const row = document.createElement('tr');
         const tempCell = document.createElement('td');
         if (currentType === 'tsm') {
-          if (temp === 200 || temp === 220) {
+          if (temp === -40 || temp === 70 || temp === 200) {
             tempCell.innerText = temp;
           } else {
             const inp = document.createElement('input');
@@ -371,12 +371,12 @@
         resInp.type = 'number';
         resInp.step = '0.001';
         if (currentType === 'tsm') {
-          if (temp === 200) {
+          if (temp === -40 || temp === 200) {
             resInp.readOnly = true;
             resInp.style.backgroundColor = "#f0f0f0";
           }
           if (temp === 70) {
-            resInp.addEventListener('input', updateTSM200Value);
+            resInp.addEventListener('input', updateTSMValues);
           }
         } else if (currentType === 'auto') {
           if (temp === 70) {
@@ -421,17 +421,24 @@
       });
     }
 
-    function updateTSM200Value() {
+    function updateTSMValues() {
       if (currentType !== 'tsm') return;
-      const baseVal = parseFloat(resInputs[70].value);
-      if (!isNaN(baseVal)) {
-        resInputs[200].value = (baseVal + 0.001).toFixed(3);
-      }
+      const r70 = parseFloat(resInputs[70].value);
+      if (isNaN(r70) || r70 <= 0) return;
+      
+      // Calculate -40 value as 0.920 (92.0%) of the 70°F resistance
+      const rNeg40 = r70 * 0.920;
+      resInputs[-40].value = rNeg40.toFixed(3);
+      
+      // Calculate 200 as 70°F + 0.001 (previously existing behavior)
+      resInputs[200].value = (r70 + 0.001).toFixed(3);
     }
     
     function calculateTFR() {
       if (currentType === 'auto') {
         autoFillValues();
+      } else if (currentType === 'tsm') {
+        updateTSMValues();
       }
       
       let temps = [];
@@ -455,11 +462,7 @@
         values.push(val);
       }
       
-      if (currentType === 'tsm') {
-        updateTSM200Value();
-      }
-      
-      const R0 = values[0];
+      const R0 = values[currentType === 'tsm' ? 1 : 0]; // Use 70°F as base for TSM mode
       calculatedCoefficients = [];
       let resultStr = "Temperature (°F), Electrical Resistivity\n";
       
@@ -544,7 +547,7 @@
         }
       });
       if (currentType === 'tsm') {
-        updateTSM200Value();
+        updateTSMValues();
       } else if (currentType === 'auto') {
         autoFillValues();
       }
