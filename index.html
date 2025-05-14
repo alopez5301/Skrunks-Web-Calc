@@ -131,7 +131,7 @@
       background-color: #121212;
       color: #e0e0e0;
     }
-    body.dark-mode .warning
+    body.dark-mode .warning,
     body.dark-mode h2, 
     body.dark-mode h3 {
       color: #66b2ff;
@@ -151,7 +151,11 @@
       background-color: #1e1e1e;
       border: 1px solid #444;
     }
-    body.dark-mode input[type="number"] {
+    body.dark-mode input[type="number"],
+    body.dark-mode input[type="text"],
+    body.dark-mode input[type="date"],
+    body.dark-mode select,
+    body.dark-mode textarea {
       border: 1px solid #444;
       background-color: #333;
       color: #e0e0e0;
@@ -174,6 +178,9 @@
     }
     body.dark-mode .delete-btn {
       color: #bbb;
+    }
+    body.dark-mode .submission-form {
+      background-color: #2c2c2c;
     }
 
     @media (max-width: 600px) {
@@ -205,12 +212,48 @@
     .module.active {
       display: block;
     }
+    .submission-form {
+      background-color: #e9ecef;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .submission-form input,
+    .submission-form select,
+    .submission-form textarea {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    .submission-form button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .submission-form button:hover {
+      background-color: #0056b3;
+    }
+    #submissionStatus {
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <div class="nav-bar">
     <button class="nav-button" id="tfrNavBtn">Skrunks Easy TFR Curve</button>
     <button class="nav-button active" id="tcrNavBtn">Skrunks Easy TCR Burnoff</button>
+    <button class="nav-button" id="submitNavBtn">Submit TFR Curve</button>
     <button class="nav-button" id="darkModeToggle">🌙</button>
   </div>
 
@@ -256,7 +299,7 @@
       <input type="number" id="coldRes" step="any">
       <button id="tcrCalcButton">Calculate</button>
       <p class="warning">
-    <strong>Warning:</strong> This tool performs standardized math for the temperature coefficient of resistance and then subtracts 3. While this should be accurate for all devices, it may not be accurate for yours. As such, Skrunk is not responsible for any damaged cups or mods that may occur due to the use of this calculator.
+        <strong>Warning:</strong> This tool performs standardized math for the temperature coefficient of resistance and then subtracts 3. While this should be accurate for all devices, it may not be accurate for yours. As such, Skrunk is not responsible for any damaged cups or mods that may occur due to the use of this calculator.
       </p>
       <h3>Result</h3>
       <p id="tcrResult"></p>
@@ -266,392 +309,424 @@
     </div>
   </div>
   
-  <script>
-    document.getElementById("tfrNavBtn").addEventListener("click", function() {
-      showModule("tfrModule");
-      updateNavButtons("tfrNavBtn");
-    });
-    
-    document.getElementById("tcrNavBtn").addEventListener("click", function() {
-      showModule("tcrModule");
-      updateNavButtons("tcrNavBtn");
-    });
-    
-    function showModule(moduleId) {
-      document.querySelectorAll(".module").forEach(module => {
-        module.classList.remove("active");
-      });
-      document.getElementById(moduleId).classList.add("active");
-    }
-    
-    function updateNavButtons(activeButtonId) {
-      document.querySelectorAll(".nav-button").forEach(button => {
-        if (button.id === activeButtonId) {
-          button.classList.add("active");
-        } else if (button.id !== "darkModeToggle") {
-          button.classList.remove("active");
-        }
-      });
-    }
+  
+<div id="submitModule" class="module">
+  <div class="submission-form">
+    <h2>Submit Your TFR Curve</h2>
+    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScSHdM6HtYnTjNJg4ZMBefj7amE1tOi5I1WmrxH22attDVZtw/viewform?embedded=true" scrolling="no" width="499" height="1299" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+  </div>
+</div>
 
-    document.getElementById("darkModeToggle").addEventListener("click", function() {
-      document.body.classList.toggle("dark-mode");
-      const isDarkMode = document.body.classList.contains("dark-mode");
-      localStorage.setItem("darkMode", isDarkMode ? "true" : "false");
-      this.textContent = isDarkMode ? "🌙" : "☀️";
-    });
-    
-    function applyDarkMode() {
-      const darkMode = localStorage.getItem("darkMode") === "true";
-      if (darkMode) {
-        document.body.classList.add("dark-mode");
-        document.getElementById("darkModeToggle").textContent = "🌙";
+  </div>
+
+<script>
+ 
+
+  const temperatureSets = {
+  '7pt': [70, 200, 300, 400, 500, 570, 800],
+  '8pt': [-40, 70, 200, 300, 400, 500, 570, 800],
+  'tsm': [-40, 70, 200, 220, 300, 500, 570, 800],
+  'auto': [70, 200, 300, 400, 500, 600, 800]
+};
+let currentType = '7pt';
+let currentTemperatures = temperatureSets[currentType];
+let tempInputs = {}; 
+let resInputs = {};  
+let calculatedCoefficients = [];
+
+function updateGrid() {
+  tempInputs = {};
+  resInputs = {};
+  const grid = document.getElementById('gridContainer');
+  grid.innerHTML = "";
+  const headerRow = document.createElement('tr');
+  const tempHeader = document.createElement('th');
+  tempHeader.innerText = "Temperature (°F)";
+  const resHeader = document.createElement('th');
+  resHeader.innerText = "Resistance Value";
+  headerRow.appendChild(tempHeader);
+  headerRow.appendChild(resHeader);
+  grid.appendChild(headerRow);
+
+  currentTemperatures.forEach(temp => {
+    const row = document.createElement('tr');
+    const tempCell = document.createElement('td');
+    if (currentType === 'tsm') {
+      // Make -40°F, 70°F, 200°F, and 220°F static in TSM mode
+      if (temp === -40 || temp === 70 || temp === 200 || temp === 220) {
+        tempCell.innerText = temp;
       } else {
-        document.body.classList.remove("dark-mode");
-        document.getElementById("darkModeToggle").textContent = "☀️";
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = temp;
+        inp.step = '0.001';
+        tempCell.appendChild(inp);
+        tempInputs[temp] = inp;
+      }
+    } else if (currentType === 'auto') {
+      tempCell.innerText = temp;
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'number';
+      inp.value = temp;
+      inp.step = '0.001';
+      tempCell.appendChild(inp);
+      tempInputs[temp] = inp;
+    }
+    row.appendChild(tempCell);
+
+    const resCell = document.createElement('td');
+    const resInp = document.createElement('input');
+    resInp.type = 'number';
+    resInp.step = '0.001';
+    if (currentType === 'tsm') {
+      if (temp === -40 || temp === 200) {
+        resInp.readOnly = true;
+        resInp.style.backgroundColor = "#f0f0f0";
+      }
+      if (temp === 70) {
+        resInp.addEventListener('input', updateTSMValues);
+      }
+    } else if (currentType === 'auto') {
+      if (temp === 70) {
+        resInp.addEventListener('input', autoFillValues);
+      } else {
+        resInp.readOnly = true;
+        resInp.style.backgroundColor = "#f0f0f0";
       }
     }
-    
-    const temperatureSets = {
-      '7pt': [70, 200, 300, 400, 500, 570, 800],
-      '8pt': [-40, 70, 200, 300, 400, 500, 570, 800],
-      'tsm': [-40, 70, 200, 220, 300, 500, 570, 800],
-      'auto': [70, 200, 300, 400, 500, 600, 800]
-    };
-    
-    let currentType = '7pt';
-    let currentTemperatures = temperatureSets[currentType];
-    let tempInputs = {}; 
-    let resInputs = {};  
-    let calculatedCoefficients = [];
+    resCell.appendChild(resInp);
+    row.appendChild(resCell);
+    resInputs[temp] = resInp;
+    grid.appendChild(row);
+  });
+}
 
-    function updateGrid() {
-      tempInputs = {};
-      resInputs = {};
-      const grid = document.getElementById('gridContainer');
-      grid.innerHTML = "";
-
-      const headerRow = document.createElement('tr');
-      const tempHeader = document.createElement('th');
-      tempHeader.innerText = "Temperature (°F)";
-      const resHeader = document.createElement('th');
-      resHeader.innerText = "Resistance Value";
-      headerRow.appendChild(tempHeader);
-      headerRow.appendChild(resHeader);
-      grid.appendChild(headerRow);
-
-      currentTemperatures.forEach(temp => {
-        const row = document.createElement('tr');
-        const tempCell = document.createElement('td');
-        if (currentType === 'tsm') {
-          // Make -40°F, 70°F, 200°F, and 220°F static in TSM mode
-          if (temp === -40 || temp === 70 || temp === 200 || temp === 220) {
-            tempCell.innerText = temp;
-          } else {
-            const inp = document.createElement('input');
-            inp.type = 'number';
-            inp.value = temp;
-            inp.step = '0.001';
-            tempCell.appendChild(inp);
-            tempInputs[temp] = inp;
-          }
-        } else if (currentType === 'auto') {
-          tempCell.innerText = temp;
-        } else {
-          const inp = document.createElement('input');
-          inp.type = 'number';
-          inp.value = temp;
-          inp.step = '0.001';
-          tempCell.appendChild(inp);
-          tempInputs[temp] = inp;
-        }
-        row.appendChild(tempCell);
-
-        const resCell = document.createElement('td');
-        const resInp = document.createElement('input');
-        resInp.type = 'number';
-        resInp.step = '0.001';
-        if (currentType === 'tsm') {
-          if (temp === -40 || temp === 200) {
-            resInp.readOnly = true;
-            resInp.style.backgroundColor = "#f0f0f0";
-          }
-          if (temp === 70) {
-            resInp.addEventListener('input', updateTSMValues);
-          }
-        } else if (currentType === 'auto') {
-          if (temp === 70) {
-            resInp.addEventListener('input', autoFillValues);
-          } else {
-            resInp.readOnly = true;
-            resInp.style.backgroundColor = "#f0f0f0";
-          }
-        }
-        resCell.appendChild(resInp);
-        row.appendChild(resCell);
-        
-        resInputs[temp] = resInp;
-        grid.appendChild(row);
-      });
+function displaySavedCalculations() {
+    var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
+    var savedCalculationsDiv = document.getElementById('savedCalculations');
+    if (savedCalculationsDiv) {
+        savedCalculationsDiv.innerHTML = calculations.map((calc, index) => 
+            `Cold Resistance: ${calc.coldRes} Ω - Required TCR: ${calc.tcrFull} <span class="delete-btn" onclick="deleteCalculation(${index})">&times;</span>`
+        ).join('<br>');
     }
+}
+  function showModule(moduleId) {
+    // Hide all modules
+    document.querySelectorAll(".module").forEach(module => {
+      module.classList.remove("active");
+    });
+    // Show the selected module
+    const selectedModule = document.getElementById(moduleId);
+    selectedModule.classList.add("active");
+    console.log("Module activated:", moduleId); // Debug output
+  }
 
-    function autoFillValues() {
-      if (currentType !== 'auto') return;
-      const r70 = parseFloat(resInputs[70].value);
-      if (isNaN(r70) || r70 <= 0) return;
-      
-      const r200 = r70 + 0.001;
-      const r600 = 0.79;
-      const r800 = r600 * 1.20;
-      
-      currentTemperatures.forEach(temp => {
-        if (temp === 70) return;
-        let value;
-        if (temp === 200) {
-          value = r200;
-        } else if (temp === 600) {
-          value = r600;
-        } else if (temp === 800) {
-          value = r800;
-        } else {
-          const progress = (temp - 200) / (600 - 200);
-          const curveFactor = Math.pow(progress, 2);
-          value = r200 + ((r600 - r200) * curveFactor);
-        }
-        resInputs[temp].value = value.toFixed(3);
-      });
-    }
+  function updateNavButtons(activeButtonId) {
+    document.querySelectorAll(".nav-button").forEach(button => {
+      if (button.id === activeButtonId) {
+        button.classList.add("active");
+      } else if (button.id !== "darkModeToggle") {
+        button.classList.remove("active");
+      }
+    });
+  }
 
-    function updateTSMValues() {
-      if (currentType !== 'tsm') return;
-      const r70 = parseFloat(resInputs[70].value);
-      if (isNaN(r70) || r70 <= 0) return;
-      
-      // Calculate -40 value as 0.920 (92.0%) of the 70°F resistance
-      const rNeg40 = r70 * 0.920;
-      resInputs[-40].value = rNeg40.toFixed(3);
-      
-      // Calculate 200 as 70°F + 0.001 (previously existing behavior)
-      resInputs[200].value = (r70 + 0.001).toFixed(3);
-    }
-    
-    function calculateTFR() {
-      if (currentType === 'auto') {
-        autoFillValues();
-      } else if (currentType === 'tsm') {
-        updateTSMValues();
-      }
-      
-      let temps = [];
-      currentTemperatures.forEach(temp => {
-        if (tempInputs[temp]) {
-          const parsed = parseFloat(tempInputs[temp].value);
-          temps.push(isNaN(parsed) ? temp : parsed);
-        } else {
-          temps.push(temp);
-        }
-      });
-      
-      let values = [];
-      for (let i = 0; i < currentTemperatures.length; i++) {
-        const t = currentTemperatures[i];
-        const val = parseFloat(resInputs[t].value);
-        if (isNaN(val)) {
-          alert("Please enter all resistance values.");
-          return;
-        }
-        values.push(val);
-      }
-      
-      const R0 = values[currentType === 'tsm' ? 1 : 0]; // Use 70°F as base for TSM mode
-      calculatedCoefficients = [];
-      let resultStr = "Temperature (°F), Electrical Resistivity\n";
-      
-      values.forEach((R, i) => {
-        let coef = R / R0;
-        if (document.getElementById("extrapolateContainer").style.display !== "none" &&
-            document.getElementById("extrapolateCheck").checked &&
-            currentTemperatures[i] === 800 && i > 0) {
-          const prevCoef = values[i - 1] / R0;
-          coef = prevCoef * 1.05;
-        }
-        coef = parseFloat(coef.toFixed(3));
-        calculatedCoefficients.push({ temp: currentTemperatures[i], coef: coef });
-        resultStr += `${currentTemperatures[i]}, ${coef.toFixed(3)}\n`;
-      });
-      document.getElementById("resultOutput").innerText = resultStr;
-    }
+  document.getElementById("darkModeToggle").addEventListener("click", function() {
+    document.body.classList.toggle("dark-mode");
+    const isDarkMode = document.body.classList.contains("dark-mode");
+    localStorage.setItem("darkMode", isDarkMode ? "true" : "false");
+    this.textContent = isDarkMode ? "🌙" : "☀️";
+  });
 
-    function importCSV(fileContent) {
-      const lines = fileContent.trim().split(/\r?\n/);
-      if (lines.length < 2) {
-        alert("CSV file does not contain valid data.");
-        return;
+  function applyDarkMode() {
+    const darkMode = localStorage.getItem("darkMode") === "true";
+    console.log("applyDarkMode - Stored value:", darkMode); // Debug line
+    if (darkMode) {
+      document.body.classList.add("dark-mode");
+      console.log("Dark mode class added"); // Debug line
+      const darkModeToggle = document.getElementById("darkModeToggle");
+      if (darkModeToggle) {
+        darkModeToggle.textContent = "🌙";
+      } else {
+        console.error("Error: 'darkModeToggle' element not found.");
       }
-      const tempsFromCSV = [];
-      const resistancesFromCSV = [];
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(/,|;/);
-        if (parts.length >= 2) {
-          const t = parseFloat(parts[0].replace(/"/g, "").trim());
-          const r = parseFloat(parts[1].replace(/"/g, "").trim());
-          if (!isNaN(t) && !isNaN(r)) {
-            tempsFromCSV.push(t);
-            resistancesFromCSV.push(r);
-          }
-        }
+    } else {
+      document.body.classList.remove("dark-mode");
+      const darkModeToggle = document.getElementById("darkModeToggle");
+      if (darkModeToggle) {
+        darkModeToggle.textContent = "☀️";
+      } else {
+        console.error("Error: 'darkModeToggle' element not found.");
       }
-      if (tempsFromCSV.length === 0) {
-        alert("No valid data found in CSV file.");
-        return;
+    }
+  }
+
+  function autoFillValues() {
+  if (currentType !== 'auto') return;
+  const r70 = parseFloat(resInputs[70].value);
+  if (isNaN(r70) || r70 <= 0) return;
+  const r200 = r70 + 0.001;
+  const r600 = 0.79;
+  const r800 = r600 * 1.20;
+  currentTemperatures.forEach(temp => {
+    if (temp === 70) return;
+    let value;
+    if (temp === 200) {
+      value = r200;
+    } else if (temp === 600) {
+      value = r600;
+    } else if (temp === 800) {
+      value = r800;
+    } else {
+      const progress = (temp - 200) / (600 - 200);
+      const curveFactor = Math.pow(progress, 2);
+      value = r200 + ((r600 - r200) * curveFactor);
+    }
+    resInputs[temp].value = value.toFixed(3);
+  });
+}
+
+function updateTSMValues() {
+  if (currentType !== 'tsm') return;
+  const r70 = parseFloat(resInputs[70].value);
+  if (isNaN(r70) || r70 <= 0) return;
+  const rNeg40 = r70 * 0.920;
+  resInputs[-40].value = rNeg40.toFixed(3);
+  resInputs[200].value = (r70 + 0.001).toFixed(3);
+}
+ function calculateTFR() {
+  if (currentType === 'auto') {
+    autoFillValues();
+  } else if (currentType === 'tsm') {
+    updateTSMValues();
+  }
+  let temps = [];
+  currentTemperatures.forEach(temp => {
+    if (tempInputs[temp]) {
+      const parsed = parseFloat(tempInputs[temp].value);
+      temps.push(isNaN(parsed) ? temp : parsed);
+    } else {
+      temps.push(temp);
+    }
+  });
+  let values = [];
+  for (let i = 0; i < currentTemperatures.length; i++) {
+    const t = currentTemperatures[i];
+    const val = parseFloat(resInputs[t].value);
+    if (isNaN(val)) {
+      alert("Please enter all resistance values.");
+      return;
+    }
+    values.push(val);
+  }
+  const R0 = values[currentType === 'tsm' ? 1 : 0]; // Use 70°F as base for TSM mode
+  calculatedCoefficients = [];
+  let resultStr = "Temperature (°F), Electrical Resistivity\n";
+  values.forEach((R, i) => {
+    let coef = R / R0;
+    if (document.getElementById("extrapolateContainer").style.display !== "none" &&
+        document.getElementById("extrapolateCheck").checked &&
+        currentTemperatures[i] === 800 && i > 0) {
+      const prevCoef = values[i - 1] / R0;
+      coef = prevCoef * 1.05;
+    }
+    coef = parseFloat(coef.toFixed(3));
+    calculatedCoefficients.push({ temp: currentTemperatures[i], coef: coef });
+    resultStr += `${currentTemperatures[i]}, ${coef.toFixed(3)}\n`;
+  });
+  document.getElementById("resultOutput").innerText = resultStr;
+}
+function importCSV(fileContent) {
+  const lines = fileContent.trim().split(/\r?\n/);
+  if (lines.length < 2) {
+    alert("CSV file does not contain valid data.");
+    return;
+  }
+  const tempsFromCSV = [];
+  const resistancesFromCSV = [];
+  for (let i = 1; i < lines.length; i++) {
+    const parts = lines[i].split(/,|;/);
+    if (parts.length >= 2) {
+      const t = parseFloat(parts[0].replace(/"/g, "").trim());
+      const r = parseFloat(parts[1].replace(/"/g, "").trim());
+      if (!isNaN(t) && !isNaN(r)) {
+        tempsFromCSV.push(t);
+        resistancesFromCSV.push(r);
       }
-      
-      let newType = '7pt';
-      if (tempsFromCSV.length === 8) {
-        if (Math.abs(tempsFromCSV[0] + 40) < 5) {
-          newType = '8pt';
-        } else {
-          newType = '8pt';
-        }
-      } else if (tempsFromCSV.length === 7) {
-        if (tempsFromCSV.some(t => Math.abs(t - 220) < 1)) {
-          newType = 'tsm';
-        } else {
-          newType = '7pt';
-        }
+    }
+  }
+  if (tempsFromCSV.length === 0) {
+    alert("No valid data found in CSV file.");
+    return;
+  }
+  let newType = '7pt';
+  if (tempsFromCSV.length === 8) {
+    if (Math.abs(tempsFromCSV[0] + 40) < 5) {
+      newType = '8pt';
+    } else {
+      newType = '8pt';
+    }
+  } else if (tempsFromCSV.length === 7) {
+    if (tempsFromCSV.some(t => Math.abs(t - 220) < 1)) {
+      newType = 'tsm';
+    } else {
+      newType = '7pt';
+    }
+  }
+  currentType = newType;
+  currentTemperatures = temperatureSets[currentType];
+  document.querySelectorAll("input[name='curveType']").forEach(radio => {
+    radio.checked = (radio.value === currentType);
+  });
+  updateGrid();
+  let baseResistance = parseFloat(window.prompt("Enter base resistance value:", "1.0"));
+  if (isNaN(baseResistance)) {
+    alert("Invalid base resistance. Aborting import.");
+    return;
+  }
+  tempsFromCSV.forEach((t, idx) => {
+    let closest = currentTemperatures[0];
+    let diff = Math.abs(t - closest);
+    currentTemperatures.forEach(ct => {
+      const d = Math.abs(t - ct);
+      if (d < diff) {
+        diff = d;
+        closest = ct;
       }
-      currentType = newType;
+    });
+    if (resInputs[closest]) {
+      resInputs[closest].value = (resistancesFromCSV[idx] * baseResistance).toFixed(3);
+    }
+  });
+  if (currentType === 'tsm') {
+    updateTSMValues();
+  } else if (currentType === 'auto') {
+    autoFillValues();
+  }
+  alert(`CSV data imported successfully with base resistance of ${baseResistance}.`);
+}
+
+function exportCSV() {
+  if (!calculatedCoefficients.length) {
+    alert("Please calculate TFR values first!");
+    return;
+  }
+  let csvContent = "Temperature (°F),Electrical Resistivity\n";
+  calculatedCoefficients.forEach(pair => {
+    csvContent += `${pair.temp},${pair.coef.toFixed(3)}\n`;
+  });
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "tfrcalc.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+function calculateTCR() {
+  var coldRes = parseFloat(document.getElementById('coldRes').value);
+  if (isNaN(coldRes) || coldRes <= 0) {
+    document.getElementById('tcrResult').innerText = "Please enter a valid positive number for cold resistance.";
+    return;
+  }
+  var tcrFraction = (0.79 / coldRes - 1) / 600;
+  var tcrFull = Math.round(tcrFraction * 200000) - 3;
+  var resultText = "Required TCR (full number): " + tcrFull;
+  document.getElementById('tcrResult').innerText = resultText;
+  saveCalculation(coldRes, tcrFull);
+  displaySavedCalculations();
+}
+
+function saveCalculation(coldRes, tcrFull) {
+  var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
+  calculations.push({ coldRes: coldRes, tcrFull: tcrFull });
+  localStorage.setItem('calculations', JSON.stringify(calculations));
+}
+
+function displaySavedCalculations() {
+  var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
+  var savedCalculationsDiv = document.getElementById('savedCalculations');
+  savedCalculationsDiv.innerHTML = calculations.map((calc, index) => 
+    `Cold Resistance: ${calc.coldRes} Ω - Required TCR: ${calc.tcrFull} <span class="delete-btn" onclick="deleteCalculation(${index})">&times;</span>`
+  ).join('<br>');
+}
+
+function deleteCalculation(index) {
+  var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
+  calculations.splice(index, 1);
+  localStorage.setItem('calculations', JSON.stringify(calculations));
+  displaySavedCalculations();
+}
+// Curve Type Radio Buttons
+document.querySelectorAll("input[name='curveType']").forEach(radio => {
+  radio.addEventListener("change", function() {
+    if (this.checked) {
+      currentType = this.value;
       currentTemperatures = temperatureSets[currentType];
-      document.querySelectorAll("input[name='curveType']").forEach(radio => {
-        radio.checked = (radio.value === currentType);
-      });
       updateGrid();
-      
-      let baseResistance = parseFloat(window.prompt("Enter base resistance value:", "1.0"));
-      if (isNaN(baseResistance)) {
-        alert("Invalid base resistance. Aborting import.");
-        return;
+      if (currentType === 'auto') {
+        document.getElementById("extrapolateContainer").style.display = "none";
+      } else {
+        document.getElementById("extrapolateContainer").style.display = "block";
       }
-      
-      tempsFromCSV.forEach((t, idx) => {
-        let closest = currentTemperatures[0];
-        let diff = Math.abs(t - closest);
-        currentTemperatures.forEach(ct => {
-          const d = Math.abs(t - ct);
-          if (d < diff) {
-            diff = d;
-            closest = ct;
-          }
-        });
-        if (resInputs[closest]) {
-          resInputs[closest].value = (resistancesFromCSV[idx] * baseResistance).toFixed(3);
-        }
-      });
-      if (currentType === 'tsm') {
-        updateTSMValues();
-      } else if (currentType === 'auto') {
-        autoFillValues();
-      }
-      alert(`CSV data imported successfully with base resistance of ${baseResistance}.`);
     }
-    
-    function exportCSV() {
-      if (!calculatedCoefficients.length) {
-        alert("Please calculate TFR values first!");
-        return;
-      }
-      let csvContent = "Temperature (°F),Electrical Resistivity\n";
-      calculatedCoefficients.forEach(pair => {
-        csvContent += `${pair.temp},${pair.coef.toFixed(3)}\n`;
-      });
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.setAttribute("href", url);
-      link.setAttribute("download", "tfrcalc.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-    
-    // GO SKRUNK YOURSELF
-    function calculateTCR() {
-      var coldRes = parseFloat(document.getElementById('coldRes').value);
-      if (isNaN(coldRes) || coldRes <= 0) {
-        document.getElementById('tcrResult').innerText = "Please enter a valid positive number for cold resistance.";
-        return;
-      }
-      var tcrFraction = (0.79 / coldRes - 1) / 600;
-      var tcrFull = Math.round(tcrFraction * 200000) - 3;
-      
-      var resultText = "Required TCR (full number): " + tcrFull;
-      document.getElementById('tcrResult').innerText = resultText;
-      
-      saveCalculation(coldRes, tcrFull);
-      displaySavedCalculations();
-    }
+  });
+});
 
-    function saveCalculation(coldRes, tcrFull) {
-      var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
-      calculations.push({ coldRes: coldRes, tcrFull: tcrFull });
-      localStorage.setItem('calculations', JSON.stringify(calculations));
-    }
+// Calculate TFR Button
+document.getElementById("calcButton").addEventListener("click", calculateTFR);
 
-    function displaySavedCalculations() {
-      var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
-      var savedCalculationsDiv = document.getElementById('savedCalculations');
-      savedCalculationsDiv.innerHTML = calculations.map((calc, index) => 
-        `Cold Resistance: ${calc.coldRes} Ω - Required TCR: ${calc.tcrFull} <span class="delete-btn" onclick="deleteCalculation(${index})">&times;</span>`
-      ).join('<br>');
-    }
+// Export Button
+document.getElementById("exportButton").addEventListener("click", exportCSV);
 
-    function deleteCalculation(index) {
-      var calculations = JSON.parse(localStorage.getItem('calculations')) || [];
-      calculations.splice(index, 1);
-      localStorage.setItem('calculations', JSON.stringify(calculations));
-      displaySavedCalculations();
-    }
-    
-    // Event Listeners
-    document.querySelectorAll("input[name='curveType']").forEach(radio => {
-      radio.addEventListener("change", function() {
-        if (this.checked) {
-          currentType = this.value;
-          currentTemperatures = temperatureSets[currentType];
-          updateGrid();
-          if (currentType === 'auto') {
-            document.getElementById("extrapolateContainer").style.display = "none";
-          } else {
-            document.getElementById("extrapolateContainer").style.display = "block";
-          }
-        }
-      });
-    });
+// Import Button
+document.getElementById("importButton").addEventListener("click", function() {
+  document.getElementById("csvFileInput").click();
+});
 
-    document.getElementById("calcButton").addEventListener("click", calculateTFR);
-    document.getElementById("exportButton").addEventListener("click", exportCSV);
-    document.getElementById("importButton").addEventListener("click", function() {
-      document.getElementById("csvFileInput").click();
-    });
-    
-    document.getElementById("csvFileInput").addEventListener("change", function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        importCSV(e.target.result);
-      };
-      reader.readAsText(file);
-      e.target.value = "";
-    });
-    
-    document.getElementById("tcrCalcButton").addEventListener("click", calculateTCR);
-    
-    window.onload = function() {
-      applyDarkMode();
-      updateGrid();
-      displaySavedCalculations();
-    };
-  </script>
+// File Input Change
+document.getElementById("csvFileInput").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    importCSV(e.target.result);
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+// Calculate TCR Button
+document.getElementById("tcrCalcButton").addEventListener("click", calculateTCR);
+
+ document.getElementById("tfrNavBtn").addEventListener("click", function() {
+    showModule("tfrModule");
+    updateNavButtons("tfrNavBtn");
+  });
+  document.getElementById("tcrNavBtn").addEventListener("click", function() {
+    showModule("tcrModule");
+    updateNavButtons("tcrNavBtn");
+  });
+  document.getElementById("submitNavBtn").addEventListener("click", function() {
+    showModule("submitModule");
+    updateNavButtons("submitNavBtn");
+    console.log("Submit TFR Curve tab activated"); // Debug output
+  });
+  // Initialize on page load
+  document.addEventListener("DOMContentLoaded", function () {
+    applyDarkMode(); // Ensure this runs first
+    updateGrid();
+    displaySavedCalculations();
+
+    // Set today's date as default in the submission form
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('submitDate');
+    if (dateInput) {
+      dateInput.value = today;
+    }
+  });
+</script>
 </body>
 </html>
