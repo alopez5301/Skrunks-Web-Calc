@@ -604,12 +604,11 @@ function updateDimensionFilter(images) {
   const currentSelection = dimensionFilter.value;
   
   while (dimensionFilter.options.length > 1) dimensionFilter.remove(1);
-  
-  Array.from(dimensions)
+    Array.from(dimensions)
     .sort((a, b) => {
       const [widthA, heightA] = a.split('x').map(Number);
       const [widthB, heightB] = b.split('x').map(Number);
-      return heightA - heightB || widthA - widthB;
+      return widthB - widthA || heightB - heightA; // Sort by width (largest first), then height
     })
     .forEach(dimension => {
       const option = document.createElement('option');
@@ -640,11 +639,8 @@ function displayImages(images) {
     loadingMessage.textContent = 'No images match the selected filter';
     return;
   }
-  
-  // Sort only once and only if needed
-  if (filteredImages !== images) {
-    filteredImages.sort((a, b) => a.height - b.height || a.width - b.width);
-  }
+    // Sort by width primarily (largest to smallest)
+  filteredImages.sort((a, b) => b.width - a.width || b.height - a.height);
   loadingMessage.style.display = 'none';
   
   // Create document fragment for batch DOM operations
