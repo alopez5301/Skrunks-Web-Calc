@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Skrunks Calculator Web Suite</title>
-  <style>
-    body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:0 10px;background:#fff;color:#000;line-height:1.6}
+  <style>    body{font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:0 10px;background:#fff;color:#000;line-height:1.6}
     .nav-bar{display:flex;justify-content:center;background:#007bff;padding:5px 0;margin-bottom:15px;border-radius:0 0 8px 8px}
     .nav-button{background:transparent;color:#fff;border:none;padding:5px 15px;margin:0 3px;font-size:14px;cursor:pointer;border-radius:4px;transition:background-color .3s}
+    .multiline-nav-button{line-height:1.2;padding-top:2px;padding-bottom:2px}
+    .small-text{font-size:12px;display:block}
     .nav-button:hover{background:rgba(255,255,255,.2)}
     .nav-button.active{background:rgba(255,255,255,.3);font-weight:700}
     h2,h3{text-align:center;color:#007bff}
@@ -78,10 +79,9 @@
   </style>
 </head>
 <body>
-  <div class="nav-bar">
-    <button class="nav-button" id="tfrNavBtn">Skrunks Easy TFR Curve</button>
+  <div class="nav-bar">    <button class="nav-button" id="tfrNavBtn">Skrunks Easy TFR Curve</button>
     <button class="nav-button active" id="tcrNavBtn">Skrunks Easy TCR Burnoff</button>
-    <button class="nav-button" id="submitNavBtn">Submit TFR (Show Skrunk your curves)</button>
+    <button class="nav-button multiline-nav-button" id="submitNavBtn">Submit TFR<br><span class="small-text">(Show Skrunk your curves)</span></button>
     <button class="nav-button" id="imageRepoNavBtn">Skrunk Image Repo</button>
     <button class="nav-button" id="darkModeToggle">🌙</button>
   </div>
